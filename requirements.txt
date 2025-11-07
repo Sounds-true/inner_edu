@@ -1,4 +1,29 @@
+# Telegram Bot
 python-telegram-bot==20.7
+
+# YAML for scenarios and quests
 PyYAML==6.0.1
+
+# Scheduling (for parent reports, reminders)
 APScheduler==3.10.4
+
+# Configuration
 python-dotenv==1.0.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# LLM and Conversation Memory
+langchain>=0.1.0
+langgraph>=0.0.20
+langchain-openai>=0.0.5
+openai>=1.0.0
+
+# Logging
+structlog>=24.1.0
+
+# Storage (JSON for Educational Mode, PostgreSQL for Therapeutic Mode)
+# Educational Mode uses JSON files (no additional dependencies)
+# Therapeutic Mode (future):
+# asyncpg>=0.29.0
+# sqlalchemy>=2.0.0
+# alembic>=1.13.0
