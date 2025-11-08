@@ -35,6 +35,7 @@ from src.orchestration.learning_profile import LearningProfile, LearningProfileA
 from src.data.user_manager import UserManager, ScreeningMetrics as UserScreeningMetrics
 from src.data.link_manager import LinkManager
 from src.game.quest_engine import QuestEngine
+from src.game.reality_bridge_manager import RealityBridgeManager
 
 logger = get_logger(__name__)
 
@@ -106,6 +107,7 @@ class StateManager:
         self.user_manager: Optional[UserManager] = None
         self.link_manager: Optional[LinkManager] = None
         self.quest_engine: Optional[QuestEngine] = None
+        self.reality_bridge_manager: Optional[RealityBridgeManager] = None
 
         # Emotional router per user (tracks emotional history)
         self.user_emotional_routers: Dict[str, EmotionalRouter] = {}
@@ -127,10 +129,18 @@ class StateManager:
             self.user_manager = UserManager()
             self.link_manager = LinkManager()
             self.quest_engine = QuestEngine()
+            self.reality_bridge_manager = RealityBridgeManager()
 
             # Load all quests
             quest_count = await self.quest_engine.load_all_quests()
             logger.info("quests_loaded", count=quest_count)
+
+            # Initialize Reality Bridge Manager
+            await self.reality_bridge_manager.initialize()
+
+            # Set reminder callback to send messages to users
+            self.reality_bridge_manager.set_reminder_callback(self._send_reality_bridge_reminder)
+            logger.info("reality_bridge_manager_ready")
 
             # Build state graph
             self.graph = self._build_state_graph()
@@ -260,13 +270,13 @@ class StateManager:
 
         # Reconstruct ScreeningMetrics
         screening = ScreeningMetrics()
-        if profile.screening_metrics:
-            screening.self_worth = profile.screening_metrics.get("self_worth", 0.5)
-            screening.self_criticism = profile.screening_metrics.get("self_criticism", 0.5)
-            screening.emotional_volatility = profile.screening_metrics.get("emotional_volatility", 0.5)
-            screening.manipulation_score = profile.screening_metrics.get("manipulation_score", 0)
-            screening.self_harm_detected = profile.screening_metrics.get("self_harm_detected", False)
-            screening.emotional_storm_count = profile.screening_metrics.get("emotional_storm_count", 0)
+        if profile.screening:
+            screening.self_worth = profile.screening.get("self_worth", 0.5)
+            screening.self_criticism = profile.screening.get("self_criticism", 0.5)
+            screening.emotional_volatility = profile.screening.get("emotional_volatility", 0.5)
+            screening.manipulation_score = profile.screening.get("manipulation_score", 0)
+            screening.self_harm_detected = profile.screening.get("self_harm_detected", False)
+            screening.emotional_storm_count = profile.screening.get("emotional_storm_count", 0)
 
         # Create UserState
         user_state = UserState(
@@ -303,7 +313,7 @@ class StateManager:
             current_location=user_state.current_location,
             current_quest=user_state.current_quest,
             quest_step=user_state.quest_step,
-            screening_metrics={
+            screening={
                 "self_worth": user_state.screening.self_worth,
                 "self_criticism": user_state.screening.self_criticism,
                 "emotional_volatility": user_state.screening.emotional_volatility,
@@ -617,6 +627,26 @@ class StateManager:
                     elif dimension == "motivation":
                         user_state.learning_profile.motivation += change
 
+            # Get Reality Bridge micro-action
+            reality_bridge = await self.quest_engine.get_reality_bridge(user_state.user_id)
+            if reality_bridge and self.reality_bridge_manager:
+                # Create Reality Bridge reminder
+                await self.reality_bridge_manager.create_bridge(
+                    user_id=user_state.user_id,
+                    quest_id=user_state.current_quest or "unknown",
+                    bridge_id=reality_bridge.id,
+                    title=reality_bridge.title,
+                    description=reality_bridge.description,
+                    deadline_hours=reality_bridge.deadline_hours,
+                    reminder_hours=reality_bridge.reminder_hours
+                )
+
+                response_parts.append(f"\n\n🌉 **Reality Bridge:**")
+                response_parts.append(f"\n{reality_bridge.title}")
+                response_parts.append(f"\n{reality_bridge.description}")
+                response_parts.append(f"\n\nУ тебя есть {reality_bridge.deadline_hours} часов!")
+                response_parts.append(f"\nЯ напомню через {reality_bridge.reminder_hours} часов. ⏰")
+
             # Mark quest as completed
             user_state.current_quest = None
             user_state.quest_step = 0
@@ -783,3 +813,33 @@ class StateManager:
             EmotionalState.DOUBT: "сомнение"
         }
         return translations.get(emotion, "что-то интересное")
+
+    async def _send_reality_bridge_reminder(self, user_id: str, bridge) -> None:
+        """
+        Send Reality Bridge reminder to user.
+
+        This is called by RealityBridgeManager when it's time to remind user.
+        In production, this would send a Telegram message.
+        For now, we log it.
+
+        Args:
+            user_id: User ID
+            bridge: ActiveBridge object
+        """
+        # TODO: In production, send via Telegram bot
+        # For now, just log
+        logger.info("reality_bridge_reminder_triggered",
+                   user_id=user_id,
+                   bridge_id=bridge.bridge_id,
+                   title=bridge.title)
+
+        # Store reminder for next user interaction
+        user_state = self.user_states.get(user_id)
+        if user_state:
+            user_state.context["pending_reality_bridge_reminder"] = {
+                "bridge_id": bridge.bridge_id,
+                "title": bridge.title,
+                "description": bridge.description,
+                "deadline_at": bridge.deadline_at
+            }
+            logger.debug("reminder_stored_in_context", user_id=user_id)
