@@ -1,0 +1,24 @@
+# FastAPI и веб-сервер
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# База данных
+sqlalchemy==2.0.23
+alembic==1.12.1
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+
+# AI и модерация
+openai==1.3.0
+pydantic==2.5.0
+
+# Существующие зависимости (из корневого requirements.txt)
+python-dotenv==1.0.0
+APScheduler==3.10.4
+
+# Telegram Bot
+python-telegram-bot==20.7
+
+# Утилиты
+pyyaml==6.0.1
