@@ -395,18 +395,108 @@ Quest Structure:
 
 Run: `python test_quest_engine.py`
 
-### Next: Phase 4 - Integration
+---
 
-- Connect QuestEngine to StateManager
-- Implement Reality Bridge reminders
-- Add more quests (2-3 per location minimum)
-- Create mini-games for emotional support
-- Telegram bot integration
+## Phase 4: Integration (Part 1) ✅
+
+**Completed:** Integrated helper classes into StateManager for end-to-end flow.
+
+### What Was Done
+
+1. **EmotionalRouter Integration**
+   - Replaced inline keyword-based emotion detection
+   - Uses `EmotionalRouter.detect_emotion(message)` for 5 emotional states
+   - Tracks emotional history per user
+   - Intensity-based detection with keyword patterns
+
+2. **LearningProfileAnalyzer Integration**
+   - Replaced hardcoded location recommendation logic
+   - Uses `LearningProfileAnalyzer.recommend_location(profile)`
+   - Targets weakest learning dimension for location selection
+   - Maps: understanding → tower, memory → valley, attention → forest, motivation → workshop
+
+3. **QuestEngine Integration**
+   - Replaced TODO in `_handle_quest_active()` with full quest flow
+   - Start quest → process steps → validate responses → apply rewards
+   - Shows prompts with hints, feedback on each step
+   - Applies learning profile changes on quest completion
+   - Added `get_first_quest_for_location()` helper method to QuestEngine
+
+4. **UserManager Integration**
+   - User persistence: load on initialization, save after each message
+   - Converts UserState ↔ UserProfile (in-memory ↔ JSON storage)
+   - Helper methods: `_profile_to_state()`, `_state_to_profile()`, `save_user_state()`
+   - Stores learning profile, screening metrics, quest progress
+
+5. **Import Fixes**
+   - Updated `langchain.schema` → `langchain_core.messages` (for langchain 1.0+)
+   - Removed embedded classes: EmotionalState, LearningProfile, ScreeningMetrics
+   - Imported from helper modules instead
+
+### Architecture Changes
+
+**Before (Phase 1-3):** StateManager had inline logic for emotions, learning, quests
+**After (Phase 4):** StateManager orchestrates specialized helper classes
+
+```
+StateManager
+├── EmotionalRouter (per-user, tracks history)
+├── UserManager (JSON persistence)
+├── LinkManager (parent linking)
+├── QuestEngine (YAML quests)
+└── LearningProfileAnalyzer (static recommendations)
+```
+
+**Separation of concerns:**
+- Emotion detection → EmotionalRouter
+- Learning profiling → LearningProfileAnalyzer
+- Quest flow → QuestEngine
+- User persistence → UserManager
+- Parent linking → LinkManager
+
+### Files Modified
+
+- `src/orchestration/state_manager.py` (+266 lines, -62 lines)
+  - Integrated all helper classes
+  - Added persistence methods
+  - Updated quest handler
+  - Updated location selection
+
+- `src/game/quest_engine.py` (+18 lines)
+  - Added `get_first_quest_for_location()` method
+
+### Testing
+
+```bash
+cd /home/user/inner_edu
+python3 -c "from src.orchestration.state_manager import StateManager; print('✅ StateManager imports successfully')"
+python3 -c "from src.game.quest_engine import QuestEngine; print('✅ QuestEngine imports successfully')"
+```
+
+Output:
+```
+✅ StateManager imports successfully
+✅ QuestEngine imports successfully
+```
+
+### Commit
+
+```
+845bdd1 Integrate helper classes into StateManager (Phase 4 Part 1)
+```
+
+### Next: Phase 4 Part 2
+
+- **Reality Bridge reminder system** (APScheduler for micro-action reminders)
+- **End-to-end integration test** (simulate full onboarding → quest flow)
+- **Telegram bot handlers** (connect StateManager to Telegram)
+- **Parent dashboard** (parent bot, linking flow, weekly reports)
 
 ---
 
-Last updated: 2025-11-07
+Last updated: 2025-11-08
 Phase 1 Status: ✅ Complete (LLM Integration + StateManager)
 Phase 2 Status: ✅ Complete (Helper Classes)
 Phase 3 Status: ✅ Complete (Quest System + YAML Scenarios)
-Next: Phase 4 - Integration + Telegram Bot
+Phase 4 Status: 🔄 In Progress (Part 1 ✅ Integration, Part 2 ⏳ Reality Bridge + Telegram)
+Next: Reality Bridge reminders + Telegram bot integration
