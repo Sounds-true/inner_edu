@@ -48,6 +48,15 @@ ENV/
 # Logs
 *.log
 logs/
+data/logs/
+
+# User Data (Educational Mode - JSON files)
+src/data/user_profiles/*.json
+src/data/parents/*.json
+src/data/links/*.json
+!src/data/user_profiles/.gitkeep
+!src/data/parents/.gitkeep
+!src/data/links/.gitkeep
 
 # OS
 .DS_Store

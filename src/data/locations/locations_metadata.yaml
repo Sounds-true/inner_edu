@@ -1,0 +1,252 @@
+# Ponimaliya Locations Metadata
+# Based on IP-03: Location System
+# 7 locations mapped to learning dimensions and emotional states
+
+locations:
+  tower_confusion:
+    name: "Башня Непонимания"
+    name_en: "Tower of Confusion"
+    emoji: "🏰"
+    tagline: "Где смыслы ищут слова"
+
+    learning_focus: understanding_meaning
+    emotional_states:
+      - doubt
+      - shame
+
+    description: |
+      Высокая башня, окутанная туманом. Здесь живут слова, которые потеряли свои простые объяснения.
+      Каждый этаж — это уровень абстракции. Чем выше, тем сложнее термины.
+
+      В Башне ты научишься:
+      - Раскладывать сложное на простое
+      - Объяснять своими словами
+      - Находить суть за терминами
+
+    modules:
+      - module_15_metacognition      # Учись учиться
+      - module_06_decision_science   # Критическое мышление
+
+    quests:
+      - tower_quest_01_simple_words
+      - tower_quest_02_term_hunt
+      - tower_quest_03_abstraction_ladder
+
+    unlock_condition: always  # Доступна с самого начала
+
+  valley_words:
+    name: "Долина Слов"
+    name_en: "Valley of Words"
+    emoji: "🌄"
+    tagline: "Где слова находят голос"
+
+    learning_focus: memory
+    emotional_states:
+      - sadness
+      - numbness
+
+    description: |
+      Тихая долина, где слова ищут свой голос. Здесь ты научишься называть то, что чувствуешь,
+      и запоминать то, что важно, через эмоциональные связи.
+
+      В Долине ты научишься:
+      - Называть свои чувства словами
+      - Запоминать через эмоциональные якоря
+      - Слушать и быть услышанным
+
+    modules:
+      - module_09_emotional_literacy  # Эмоциональная грамотность
+      - module_14_communication       # Коммуникация
+      - module_16_adaptive_learning   # Адаптивное обучение (память)
+
+    quests:
+      - valley_quest_01_feelings_words
+      - valley_quest_02_emotional_memory
+      - valley_quest_03_i_statements
+
+    unlock_condition: always
+
+  mountain_emptiness:
+    name: "Гора Пустоты"
+    name_en: "Mountain of Emptiness"
+    emoji: "⛰️"
+    tagline: "Где отпускают ярлыки"
+
+    learning_focus: none  # Emotional work
+    emotional_states:
+      - anger
+      - numbness
+
+    description: |
+      Высокая гора, где ветер сдувает ненужные ярлыки. Здесь ты научишься отпускать то,
+      что мешает учиться: "я тупой", "я не справлюсь", "у меня не получится".
+
+      На Горе ты научишься:
+      - Отпускать самокритику
+      - Принимать пустоту как возможность
+      - Переименовывать ярлыки
+
+    modules:
+      - module_02_dbt             # DBT basics (отпускание)
+      - module_08_mindfulness     # Осознанность
+
+    quests:
+      - mountain_quest_01_letting_go
+      - mountain_quest_02_labels_release
+      - mountain_quest_03_self_worth
+
+    unlock_condition:
+      emotional_state:
+        - anger
+        - numbness
+
+  forest_calm:
+    name: "Лес Спокойствия"
+    name_en: "Forest of Calm"
+    emoji: "🌲"
+    tagline: "Где дышат и слушают тело"
+
+    learning_focus: attention
+    emotional_states:
+      - tiredness
+      - anxiety
+
+    description: |
+      Тихий лес, где деревья шумят в ритме дыхания. Здесь ты научишься управлять вниманием,
+      успокаивать тревогу и возвращаться в настоящий момент.
+
+      В Лесу ты научишься:
+      - Техникам дыхания (4-7-8, box breathing)
+      - Возвращать внимание к настоящему
+      - Слушать своё тело
+
+    modules:
+      - module_08_mindfulness  # Осознанность
+      - module_02_dbt          # DBT (дыхание, grounding)
+      - module_19_self_care    # Забота о себе
+
+    quests:
+      - forest_quest_01_breathing
+      - forest_quest_02_body_scan
+      - forest_quest_03_5_4_3_2_1
+
+    unlock_condition: always
+
+  city_mind:
+    name: "Город Разума"
+    name_en: "City of Mind"
+    emoji: "🏙️"
+    tagline: "Где мысли встречают факты"
+
+    learning_focus: understanding_meaning
+    emotional_states:
+      - interest
+      - doubt
+
+    description: |
+      Современный город, где живут факты и мнения. Здесь ты научишься отличать одно от другого,
+      распознавать манипуляции и мыслить критически.
+
+      В Городе ты научишься:
+      - Отличать факты от интерпретаций
+      - Распознавать когнитивные искажения
+      - Защищаться от манипуляций
+
+    modules:
+      - module_06_decision_science  # Критическое мышление
+      - module_15_metacognition     # Мета-познание
+
+    quests:
+      - city_quest_01_facts_vs_opinions
+      - city_quest_02_cognitive_distortions
+      - city_quest_03_manipulation_check
+
+    unlock_condition:
+      learning_profile:
+        understanding_meaning: ">= 3"
+
+  workshop_creator:
+    name: "Мастерская Творца"
+    name_en: "Workshop of Creator"
+    emoji: "🛠️"
+    tagline: "Где рождаются идеи"
+
+    learning_focus: motivation
+    emotional_states:
+      - interest
+
+    description: |
+      Светлая мастерская, полная инструментов и деталей. Здесь ты научишься решать противоречия,
+      творить новое и находить мотивацию в создании.
+
+      В Мастерской ты научишься:
+      - Решать противоречия (TRIZ)
+      - Творить и выражать себя
+      - Находить смысл в создании
+
+    modules:
+      - module_05_triz                # TRIZ (противоречия)
+      - module_17_creative_expression # Творческое выражение
+      - module_20_future_planning     # Планирование будущего
+
+    quests:
+      - workshop_quest_01_triz_start
+      - workshop_quest_02_creative_problem
+      - workshop_quest_03_future_vision
+
+    unlock_condition:
+      learning_profile:
+        motivation: "<= 4"
+
+  bridge_actions:
+    name: "Мост Действий"
+    name_en: "Bridge of Actions"
+    emoji: "🌉"
+    tagline: "Где виртуальное становится реальным"
+
+    learning_focus: none  # Integration
+    emotional_states: all
+
+    description: |
+      Мост между Понималией и реальным миром. Здесь виртуальные успехи превращаются в реальные действия.
+      Каждый квест заканчивается микро-действием в реальной жизни.
+
+      На Мосту ты научишься:
+      - Переносить навыки в реальность
+      - Делать маленькие шаги
+      - Отслеживать реальный прогресс
+
+    modules:
+      - module_04_reality_bridge  # Reality Bridge
+      - module_14_communication   # Коммуникация
+      - module_20_future_planning # Планирование
+
+    quests:
+      - bridge_quest_01_micro_action
+      - bridge_quest_02_real_conversation
+      - bridge_quest_03_daily_practice
+
+    unlock_condition:
+      quest_completed: ">= 3"  # Доступен после 3+ квестов
+
+# Navigation rules
+navigation:
+  start_location: null  # Определяется онбордингом
+  unlock_order:
+    - tower_confusion  # Всегда доступна
+    - valley_words     # Всегда доступна
+    - forest_calm      # Всегда доступна
+    - city_mind        # Нужно understanding >= 3
+    - mountain_emptiness  # Только при anger/numbness
+    - workshop_creator # При низкой мотивации
+    - bridge_actions   # После 3+ квестов
+
+# XP rewards by location
+location_xp:
+  tower_confusion: 10
+  valley_words: 10
+  mountain_emptiness: 15
+  forest_calm: 10
+  city_mind: 12
+  workshop_creator: 12
+  bridge_actions: 15

@@ -1,0 +1,232 @@
+# Onboarding scenario for Ponimaliya
+# Based on IP-02: 7-step entry flow
+# Routes child from learning difficulties → emotional awareness → first quest
+
+id: onboarding_ponimaliya
+title: "Добро пожаловать в Понималию"
+type: onboarding
+estimated_time_minutes: 5
+
+description: |
+  Первый вход в Понималию - страну, где смыслы потеряли свои слова.
+  Онбординг ведёт от учебных трудностей к эмоциональному профилированию
+  через игровую механику.
+
+steps:
+  # Step 1: Greeting
+  - id: greeting
+    type: choice
+    prompt: |
+      Привет! Иногда учёба бывает как лабиринт:
+      вроде идёшь — а выход где-то теряется.
+
+      Бывает, что какие-то предметы идут легко,
+      а на других мысли путаются?
+
+      Я — твой спутник из Понималии.
+      Там живут смыслы, которые потеряли свои слова.
+      Попробуем вместе их вернуть?
+    options:
+      - text: "🌟 Да, хочу разобраться"
+        score: 1.0
+        feedback: "Отлично! Начинаем путешествие!"
+        sets_emotional_state: "interest"
+      - text: "🤔 Не знаю, получится ли"
+        score: 0.7
+        feedback: "Всё нормально! Сомнения — это нормально. Идём вместе."
+        sets_emotional_state: "doubt"
+      - text: "😴 У меня усталость"
+        score: 0.5
+        feedback: "Понимаю. Давай начнём медленно, без спешки."
+        sets_emotional_state: "tiredness"
+
+  # Step 2: Subject survey
+  - id: subject_survey
+    type: choice
+    prompt: "Выбери предмет, где сейчас чаще всего теряешь нить."
+    options:
+      - text: "📝 Русский язык"
+        score: 1.0
+        sets_subject: "russian"
+      - text: "🔢 Математика"
+        score: 1.0
+        sets_subject: "mathematics"
+      - text: "📚 История"
+        score: 1.0
+        sets_subject: "history"
+      - text: "📖 Литература"
+        score: 1.0
+        sets_subject: "literature"
+      - text: "🧪 Биология"
+        score: 1.0
+        sets_subject: "biology"
+      - text: "➕ Другое"
+        score: 1.0
+        sets_subject: "other"
+
+  # Step 3: Difficulty type → Learning Profile
+  - id: difficulty_type
+    type: choice
+    prompt: |
+      {subject_name}. Хорошо.
+      Что именно там сложнее:
+    options:
+      - text: "🔍 понять смысл?"
+        score: 1.0
+        feedback: "Мы начнём именно с этого."
+        updates_learning_profile:
+          understanding_meaning: +2
+        recommends_location: "tower_confusion"
+      - text: "🧠 запомнить?"
+        score: 1.0
+        feedback: "Понятно. Поработаем с памятью."
+        updates_learning_profile:
+          memory: +2
+        recommends_location: "valley_words"
+      - text: "👀 сосредоточиться?"
+        score: 1.0
+        feedback: "Хорошо. Займёмся вниманием."
+        updates_learning_profile:
+          attention: +2
+        recommends_location: "forest_calm"
+      - text: "⭐ не потерять интерес?"
+        score: 1.0
+        feedback: "Отлично! Найдём мотивацию."
+        updates_learning_profile:
+          motivation: +2
+        recommends_location: "workshop_creator"
+
+  # Step 4: Emotion bridge
+  - id: emotion_bridge
+    type: choice
+    prompt: |
+      Учёба — это не только про мозг, но и про чувства.
+      Иногда трудно не потому, что сложно,
+      а потому что грустно, страшно или одиноко.
+
+      Как ты себя чувствуешь, когда {subject_name} не получается?
+    options:
+      - text: "Продолжить"
+        score: 1.0
+
+  # Step 5: Emotion choice → Emotional State
+  - id: emotion_choice
+    type: choice
+    prompt: "Выбери, что ближе всего:"
+    options:
+      - text: "🔥 Злюсь"
+        score: 1.0
+        feedback: "Понимаю. Злость — это энергия. Давай направим её в дело."
+        sets_emotional_state: "anger"
+        recommends_location: "mountain_emptiness"
+      - text: "💧 Грущу"
+        score: 1.0
+        feedback: "Грусть — это тоже нормально. Мы с ней справимся."
+        sets_emotional_state: "sadness"
+        recommends_location: "valley_words"
+      - text: "🌫 Стыдно"
+        score: 1.0
+        feedback: "Стыд часто мешает. Давай разберёмся, откуда он."
+        sets_emotional_state: "shame"
+        recommends_location: "tower_confusion"
+      - text: "🌪 Боюсь"
+        score: 1.0
+        feedback: "Страх — это защита. Но иногда он лишний. Проверим вместе."
+        sets_emotional_state: "anxiety"
+        recommends_location: "forest_calm"
+      - text: "🪨 Ничего"
+        score: 1.0
+        feedback: "Понимаю. Иногда чувства прячутся глубоко."
+        sets_emotional_state: "numbness"
+        recommends_location: "mountain_emptiness"
+
+  # Step 6: Location intro
+  - id: location_intro
+    type: choice
+    prompt: |
+      Отлично! Теперь ты знаешь, где начнём.
+
+      В Понималии 7 локаций:
+
+      🏰 Башня Непонимания — где живут смыслы
+      🌄 Долина Слов — где слова находят голос
+      ⛰️  Гора Пустоты — где отпускают ярлыки
+      🌲 Лес Спокойствия — где дышат и слушают тело
+      🏙️  Город Разума — где мысли встречают факты
+      🛠️  Мастерская Творца — где рождаются идеи
+      🌉 Мост Действий — где виртуальное становится реальным
+
+      Начнём с {recommended_location_name}?
+    options:
+      - text: "🚀 Да, начинаем!"
+        score: 1.0
+        feedback: "Отлично! Твой первый квест уже ждёт."
+      - text: "🗺️  Покажи карту"
+        score: 0.8
+        feedback: "Хорошо, вот карта Понималии. Выбери локацию сам."
+
+  # Step 7: First quest start
+  - id: first_quest_start
+    type: choice
+    prompt: |
+      Готов к первому квесту?
+
+      Это будет короткое задание (5-10 минут),
+      которое поможет тебе лучше понять {subject_name}.
+
+      Квест: "{first_quest_title}"
+    options:
+      - text: "✨ Начать квест"
+        score: 1.0
+        starts_quest: true
+      - text: "📖 Расскажи подробнее"
+        score: 0.8
+        shows_quest_description: true
+
+completion_message: |
+  🎉 Онбординг завершён!
+
+  Твой профиль готов:
+  - Предмет: {chosen_subject}
+  - Сложность: {difficulty_type}
+  - Эмоция: {chosen_emotion}
+  - Стартовая локация: {recommended_location}
+
+  Теперь начинается настоящее путешествие по Понималии!
+
+metadata:
+  # Maps subjects to Russian names
+  subject_names:
+    russian: "Русский язык"
+    mathematics: "Математика"
+    history: "История"
+    literature: "Литература"
+    biology: "Биология"
+    other: "Другой предмет"
+
+  # Maps locations to Russian names
+  location_names:
+    tower_confusion: "Башня Непонимания"
+    valley_words: "Долина Слов"
+    mountain_emptiness: "Гора Пустоты"
+    forest_calm: "Лес Спокойствия"
+    city_mind: "Город Разума"
+    workshop_creator: "Мастерская Творца"
+    bridge_actions: "Мост Действий"
+
+  # Maps difficulty types to learning dimensions
+  difficulty_to_dimension:
+    understanding: "understanding_meaning"
+    memory: "memory"
+    attention: "attention"
+    motivation: "motivation"
+
+  # First quest recommendations by location
+  first_quests:
+    tower_confusion: "tower_quest_01_simple_words"
+    valley_words: "valley_quest_01_feelings_words"
+    mountain_emptiness: "mountain_quest_01_letting_go"
+    forest_calm: "forest_quest_01_breathing"
+    city_mind: "city_quest_01_facts_vs_opinions"
+    workshop_creator: "workshop_quest_01_triz_start"
+    bridge_actions: "bridge_quest_01_micro_action"
