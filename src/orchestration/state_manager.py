@@ -19,7 +19,7 @@ from pathlib import Path
 import asyncio
 
 from langgraph.graph import StateGraph, END
-from langchain.schema import BaseMessage, HumanMessage, SystemMessage, AIMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, AIMessage
 from langchain_openai import ChatOpenAI
 
 from src.core.logger import get_logger
@@ -28,6 +28,13 @@ from src.config import (
     EDUCATIONAL_LOCATIONS,
     SCREENING_THRESHOLDS
 )
+
+# Import helper classes
+from src.orchestration.emotional_router import EmotionalRouter, EmotionalState
+from src.orchestration.learning_profile import LearningProfile, LearningProfileAnalyzer, LearningDimension
+from src.data.user_manager import UserManager, ScreeningMetrics as UserScreeningMetrics
+from src.data.link_manager import LinkManager
+from src.game.quest_engine import QuestEngine
 
 logger = get_logger(__name__)
 
@@ -47,34 +54,8 @@ class ConversationState(str, Enum):
     END_SESSION = "end_session"
 
 
-class EmotionalState(str, Enum):
-    """5 emotional states for children."""
-    TIREDNESS = "tiredness"  # Усталость
-    ANXIETY = "anxiety"  # Тревога
-    ANGER = "anger"  # Злость
-    INTEREST = "interest"  # Интерес
-    DOUBT = "doubt"  # Сомнение
-
-
-@dataclass
-class LearningProfile:
-    """Learning profile tracking."""
-    understanding_meaning: int = 5  # 1-10
-    memory: int = 5  # 1-10
-    attention: int = 5  # 1-10
-    motivation: int = 5  # 1-10
-
-
-@dataclass
-class ScreeningMetrics:
-    """Metrics for therapeutic transition detection."""
-    self_worth: float = 0.5  # 0-1
-    self_criticism: float = 0.5  # 0-1
-    emotional_volatility: float = 0.5  # 0-1
-    manipulation_score: int = 0  # 0-10
-    self_harm_detected: bool = False
-    emotional_storm_count: int = 0
-    last_emotional_storm: Optional[datetime] = None
+# Use ScreeningMetrics from user_manager
+ScreeningMetrics = UserScreeningMetrics
 
 
 @dataclass
@@ -119,10 +100,20 @@ class StateManager:
         self.user_states: Dict[str, UserState] = {}
         self.graph: Optional[StateGraph] = None
         self.llm: Optional[ChatOpenAI] = None
+
+        # Helper classes (initialized lazily in initialize())
+        self.emotional_router: Optional[EmotionalRouter] = None
+        self.user_manager: Optional[UserManager] = None
+        self.link_manager: Optional[LinkManager] = None
+        self.quest_engine: Optional[QuestEngine] = None
+
+        # Emotional router per user (tracks emotional history)
+        self.user_emotional_routers: Dict[str, EmotionalRouter] = {}
+
         self.initialized = False
 
     async def initialize(self) -> None:
-        """Initialize the state graph and LLM."""
+        """Initialize the state graph, LLM, and helper classes."""
         try:
             # Initialize OpenAI LLM
             self.llm = ChatOpenAI(
@@ -131,6 +122,15 @@ class StateManager:
                 max_tokens=500
             )
             logger.info("llm_initialized", model="gpt-4")
+
+            # Initialize helper classes
+            self.user_manager = UserManager()
+            self.link_manager = LinkManager()
+            self.quest_engine = QuestEngine()
+
+            # Load all quests
+            quest_count = await self.quest_engine.load_all_quests()
+            logger.info("quests_loaded", count=quest_count)
 
             # Build state graph
             self.graph = self._build_state_graph()
@@ -228,12 +228,104 @@ class StateManager:
         return workflow.compile()
 
     async def initialize_user(self, user_id: str, child_name: Optional[str] = None) -> None:
-        """Initialize a new user state."""
+        """Initialize a new user state, loading from UserManager if exists."""
+        # Try to load from UserManager
+        if self.user_manager:
+            profile = await self.user_manager.get_user(user_id)
+            if profile:
+                # Convert UserProfile to UserState
+                user_state = self._profile_to_state(profile)
+                self.user_states[user_id] = user_state
+                logger.info("user_loaded_from_storage", user_id=user_id)
+                return
+
+        # Create new user state
         self.user_states[user_id] = UserState(
             user_id=user_id,
             child_name=child_name
         )
-        logger.info("user_initialized", user_id=user_id, child_name=child_name)
+        logger.info("user_initialized_new", user_id=user_id, child_name=child_name)
+
+    def _profile_to_state(self, profile) -> UserState:
+        """Convert UserProfile to UserState."""
+        from src.data.user_manager import UserProfile
+
+        # Reconstruct LearningProfile
+        learning_profile = LearningProfile()
+        if profile.learning_profile:
+            learning_profile.understanding_meaning = profile.learning_profile.get("understanding_meaning", 5)
+            learning_profile.memory = profile.learning_profile.get("memory", 5)
+            learning_profile.attention = profile.learning_profile.get("attention", 5)
+            learning_profile.motivation = profile.learning_profile.get("motivation", 5)
+
+        # Reconstruct ScreeningMetrics
+        screening = ScreeningMetrics()
+        if profile.screening_metrics:
+            screening.self_worth = profile.screening_metrics.get("self_worth", 0.5)
+            screening.self_criticism = profile.screening_metrics.get("self_criticism", 0.5)
+            screening.emotional_volatility = profile.screening_metrics.get("emotional_volatility", 0.5)
+            screening.manipulation_score = profile.screening_metrics.get("manipulation_score", 0)
+            screening.self_harm_detected = profile.screening_metrics.get("self_harm_detected", False)
+            screening.emotional_storm_count = profile.screening_metrics.get("emotional_storm_count", 0)
+
+        # Create UserState
+        user_state = UserState(
+            user_id=profile.user_id,
+            child_name=profile.child_name,
+            age=profile.age,
+            learning_profile=learning_profile,
+            current_location=profile.current_location,
+            current_quest=profile.current_quest,
+            quest_step=profile.quest_step,
+            screening=screening,
+            parent_linked=profile.parent_linked,
+            link_id=profile.link_id
+        )
+
+        return user_state
+
+    def _state_to_profile(self, user_state: UserState):
+        """Convert UserState to UserProfile."""
+        from src.data.user_manager import UserProfile
+
+        profile = UserProfile(
+            user_id=user_state.user_id,
+            child_name=user_state.child_name,
+            age=user_state.age,
+            parent_linked=user_state.parent_linked,
+            link_id=user_state.link_id,
+            learning_profile={
+                "understanding_meaning": user_state.learning_profile.understanding_meaning,
+                "memory": user_state.learning_profile.memory,
+                "attention": user_state.learning_profile.attention,
+                "motivation": user_state.learning_profile.motivation
+            },
+            current_location=user_state.current_location,
+            current_quest=user_state.current_quest,
+            quest_step=user_state.quest_step,
+            screening_metrics={
+                "self_worth": user_state.screening.self_worth,
+                "self_criticism": user_state.screening.self_criticism,
+                "emotional_volatility": user_state.screening.emotional_volatility,
+                "manipulation_score": user_state.screening.manipulation_score,
+                "self_harm_detected": user_state.screening.self_harm_detected,
+                "emotional_storm_count": user_state.screening.emotional_storm_count
+            }
+        )
+
+        return profile
+
+    async def save_user_state(self, user_state: UserState) -> None:
+        """Save user state to UserManager."""
+        if not self.user_manager:
+            return
+
+        try:
+            profile = self._state_to_profile(user_state)
+            await self.user_manager.update_user(profile)
+            logger.debug("user_state_saved", user_id=user_state.user_id)
+        except Exception as e:
+            logger.error("user_state_save_failed", user_id=user_state.user_id, error=str(e))
 
     async def process_message(self, user_id: str, message: str) -> str:
         """
@@ -277,6 +369,9 @@ class StateManager:
             # Add to message history
             user_state.message_history.append(AIMessage(content=response))
 
+            # Save user state to persistent storage
+            await self.save_user_state(user_state)
+
             return response
 
         except Exception as e:
@@ -284,24 +379,22 @@ class StateManager:
             return "Извини, что-то пошло не так. Давай попробуем еще раз? 😊"
 
     async def _detect_emotional_state(self, user_state: UserState, message: str) -> None:
-        """Detect emotional state from message using keywords + LLM."""
-        message_lower = message.lower()
+        """Detect emotional state using EmotionalRouter."""
+        # Get or create emotional router for user
+        if user_state.user_id not in self.user_emotional_routers:
+            self.user_emotional_routers[user_state.user_id] = EmotionalRouter()
 
-        # Keyword-based detection
-        if any(word in message_lower for word in ["устал", "не хочу", "скучно", "надоело"]):
-            user_state.emotional_state = EmotionalState.TIREDNESS
-        elif any(word in message_lower for word in ["боюсь", "страшно", "волнуюсь", "тревожно"]):
-            user_state.emotional_state = EmotionalState.ANXIETY
-        elif any(word in message_lower for word in ["злюсь", "бесит", "раздражает", "ненавижу"]):
-            user_state.emotional_state = EmotionalState.ANGER
-        elif any(word in message_lower for word in ["не понимаю", "не знаю", "не уверен"]):
-            user_state.emotional_state = EmotionalState.DOUBT
-        elif any(word in message_lower for word in ["интересно", "хочу", "расскажи", "покажи"]):
-            user_state.emotional_state = EmotionalState.INTEREST
+        router = self.user_emotional_routers[user_state.user_id]
+
+        # Detect emotion
+        reading = router.detect_emotion(message)
+        user_state.emotional_state = reading.state
 
         logger.info("emotional_state_detected",
                    user_id=user_state.user_id,
-                   state=user_state.emotional_state.value)
+                   state=reading.state.value,
+                   intensity=reading.intensity,
+                   keywords=reading.detected_keywords)
 
     async def _update_screening_metrics(self, user_state: UserState, message: str) -> None:
         """Update screening metrics for therapeutic transition detection."""
@@ -408,21 +501,29 @@ class StateManager:
         """Handle location selection based on learning profile."""
         user_state = state["user_state"]
 
-        # Recommend location based on lowest learning dimension
-        if user_state.learning_profile.understanding_meaning <= 4:
-            recommended = "tower_confusion"
-            location_name = "Башню Непонимания"
-        elif user_state.learning_profile.attention <= 4:
-            recommended = "forest_calm"
-            location_name = "Лес Спокойствия"
-        elif user_state.learning_profile.memory <= 4:
-            recommended = "valley_words"
-            location_name = "Долину Слов"
-        else:
-            recommended = "city_mind"
-            location_name = "Город Разума"
+        # Use LearningProfileAnalyzer to recommend location based on weakest dimension
+        recommended = LearningProfileAnalyzer.recommend_location(user_state.learning_profile)
 
+        # Location names mapping
+        location_names = {
+            "tower_confusion": "Башню Непонимания",
+            "valley_words": "Долину Слов",
+            "mountain_emptiness": "Гору Пустоты",
+            "forest_calm": "Лес Спокойствия",
+            "city_mind": "Город Разума",
+            "workshop_creator": "Мастерскую Творца",
+            "bridge_actions": "Мост Действий"
+        }
+
+        location_name = location_names.get(recommended, "Башню Непонимания")
         user_state.current_location = recommended
+
+        # Get first quest for location from QuestEngine
+        first_quest = None
+        if self.quest_engine:
+            first_quest = self.quest_engine.get_first_quest_for_location(recommended)
+            if first_quest:
+                user_state.current_quest = first_quest.id
 
         state["response"] = (
             f"Отлично! Думаю, тебе стоит посетить {location_name} 🏰\n\n"
@@ -433,9 +534,94 @@ class StateManager:
         return state
 
     async def _handle_quest_active(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle active quest state."""
-        # TODO: Integrate with QuestEngine for YAML scenarios
-        state["response"] = "Квесты будут реализованы через QuestEngine с YAML-сценариями."
+        """Handle active quest state with QuestEngine."""
+        user_state = state["user_state"]
+        message = state["message"]
+
+        if not self.quest_engine:
+            state["response"] = "Квесты временно недоступны. Попробуй позже! 😊"
+            return state
+
+        # Check if quest is already started
+        progress = self.quest_engine.get_current_quest_progress(user_state.user_id)
+
+        if not progress:
+            # Start new quest
+            if not user_state.current_quest:
+                state["response"] = "Сначала выбери локацию и квест!"
+                return state
+
+            success, first_step = await self.quest_engine.start_quest(
+                user_state.user_id,
+                user_state.current_quest
+            )
+
+            if not success or not first_step:
+                state["response"] = "Не могу начать квест. Попробуй позже! 😅"
+                return state
+
+            # Show first step
+            state["response"] = f"🎯 **{first_step.id}**\n\n{first_step.prompt}"
+
+            if first_step.hint:
+                state["response"] += f"\n\n💡 *Подсказка:* {first_step.hint}"
+
+            user_state.quest_step = 1
+            return state
+
+        # Process response to current step
+        success, next_step, feedback = await self.quest_engine.process_step_response(
+            user_state.user_id,
+            message
+        )
+
+        if not success:
+            # Invalid response
+            state["response"] = f"❌ {feedback}\n\nПопробуй еще раз!"
+            return state
+
+        # Valid response
+        response_parts = []
+
+        if feedback:
+            response_parts.append(f"✅ {feedback}")
+
+        if next_step:
+            # Continue to next step
+            response_parts.append(
+                f"\n\n🎯 **Шаг {user_state.quest_step + 1}**\n\n{next_step.prompt}"
+            )
+
+            if next_step.hint:
+                response_parts.append(f"\n\n💡 *Подсказка:* {next_step.hint}")
+
+            user_state.quest_step += 1
+        else:
+            # Quest completed!
+            response_parts.append("\n\n🎉 **Квест завершен!**")
+
+            # Get rewards
+            rewards = await self.quest_engine.get_quest_rewards(user_state.user_id)
+            if rewards:
+                response_parts.append(f"\n\n🎁 **Награды:**")
+                response_parts.append(f"• XP: +{rewards.experience_points}")
+
+                # Apply learning profile changes
+                for dimension, change in rewards.learning_profile_changes.items():
+                    if dimension == "understanding_meaning":
+                        user_state.learning_profile.understanding_meaning += change
+                    elif dimension == "memory":
+                        user_state.learning_profile.memory += change
+                    elif dimension == "attention":
+                        user_state.learning_profile.attention += change
+                    elif dimension == "motivation":
+                        user_state.learning_profile.motivation += change
+
+            # Mark quest as completed
+            user_state.current_quest = None
+            user_state.quest_step = 0
+
+        state["response"] = "".join(response_parts)
         return state
 
     async def _handle_quest_reflection(self, state: Dict[str, Any]) -> Dict[str, Any]:

@@ -258,6 +258,24 @@ class QuestEngine:
             if quest.location == location
         ]
 
+    def get_first_quest_for_location(self, location: str) -> Optional[Quest]:
+        """
+        Get first quest for a location (usually quest_01).
+
+        Args:
+            location: Location ID
+
+        Returns:
+            First quest for location, or None if no quests found
+        """
+        quests = self.get_quests_by_location(location)
+        if not quests:
+            return None
+
+        # Sort by quest ID (assumes quest naming like quest_01, quest_02, etc.)
+        quests.sort(key=lambda q: q.id)
+        return quests[0]
+
     def get_quests_by_difficulty(self, difficulty: QuestDifficulty) -> List[Quest]:
         """Get quests by difficulty level."""
         return [
