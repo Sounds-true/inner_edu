@@ -1,9 +1,18 @@
 """
 Конвертер YAML квестов в граф (nodes/edges) для React Flow
 """
+import sys
+import os
+from pathlib import Path
+
+# Добавить parent directory в sys.path для корректных импортов
+current_dir = Path(__file__).resolve().parent
+project_root = current_dir.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 import yaml
 from typing import Dict, List
-from pathlib import Path
 from backend.quest_builder.agent import QuestNode, QuestEdge, QuestGraph
 
 

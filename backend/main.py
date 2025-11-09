@@ -17,6 +17,23 @@ app = FastAPI(
     version="1.0.0"
 )
 
+
+# Создание таблиц при старте (для MVP - без миграций)
+@app.on_event("startup")
+async def startup_event():
+    """Создать таблицы в БД если их нет"""
+    try:
+        from backend.database.models import Base
+        from backend.database import engine
+
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        print("✅ Database tables created/verified")
+    except Exception as e:
+        print(f"⚠️ Database initialization failed: {e}")
+        print("   Continue without database (some endpoints will fail)")
+
 # CORS настройка (для фронтенда)
 app.add_middleware(
     CORSMiddleware,
