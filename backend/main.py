@@ -52,14 +52,14 @@ async def health():
 
 
 # Импорт роутеров
-from backend.api import builder
+from backend.api import builder, quests
 
 # Подключение роутеров
 app.include_router(builder.router, prefix="/api/builder", tags=["AI Quest Builder"])
+app.include_router(quests.router, prefix="/api/quests", tags=["Quests"])
 
 # TODO: Добавить остальные роутеры
-# from backend.api import quests, users, moderation
-# app.include_router(quests.router, prefix="/api/quests", tags=["quests"])
+# from backend.api import users, moderation
 # app.include_router(users.router, prefix="/api/users", tags=["users"])
 # app.include_router(moderation.router, prefix="/api/moderation", tags=["moderation"])
 

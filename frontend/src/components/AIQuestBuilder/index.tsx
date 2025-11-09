@@ -20,6 +20,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 import { QuestGraph, ChatMessage } from '../../types/quest'
 import axios from 'axios'
+import QuestLibrary from './QuestLibrary'
 
 interface Props {
   userId: string
@@ -34,6 +35,8 @@ export default function AIQuestBuilder({ userId }: Props) {
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [currentStage, setCurrentStage] = useState('')
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false)
+  const [questTitle, setQuestTitle] = useState('')
 
   // Отправить сообщение в чат
   const sendMessage = async () => {
@@ -109,6 +112,18 @@ export default function AIQuestBuilder({ userId }: Props) {
     setEdges(flowEdges)
   }
 
+  // Загрузить квест из библиотеки
+  const handleLoadQuest = (graph: QuestGraph, title: string) => {
+    setQuestTitle(title)
+    updateGraphFromBackend(graph)
+
+    const loadMessage: ChatMessage = {
+      role: 'assistant',
+      content: `Загрузил квест "${title}". Можешь редактировать узлы или попросить меня изменить что-то.`
+    }
+    setMessages(prev => [...prev, loadMessage])
+  }
+
   // Получить label для узла
   const getNodeLabel = (node: any): string => {
     switch (node.type) {
@@ -144,6 +159,13 @@ export default function AIQuestBuilder({ userId }: Props) {
 
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%' }}>
+      {/* Модальное окно библиотеки квестов */}
+      <QuestLibrary
+        isOpen={isLibraryOpen}
+        onClose={() => setIsLibraryOpen(false)}
+        onSelectQuest={handleLoadQuest}
+      />
+
       {/* Левая панель: Чат */}
       <div style={{
         width: '350px',
@@ -158,12 +180,39 @@ export default function AIQuestBuilder({ userId }: Props) {
           background: '#3b82f6',
           color: 'white'
         }}>
-          <h2 style={{ margin: 0, fontSize: '20px' }}>AI Quest Builder</h2>
-          {currentStage && (
-            <p style={{ margin: '5px 0 0 0', fontSize: '12px', opacity: 0.9 }}>
-              Стадия: {currentStage}
-            </p>
-          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '20px' }}>AI Quest Builder</h2>
+              {currentStage && (
+                <p style={{ margin: '5px 0 0 0', fontSize: '12px', opacity: 0.9 }}>
+                  Стадия: {currentStage}
+                </p>
+              )}
+              {questTitle && (
+                <p style={{ margin: '5px 0 0 0', fontSize: '11px', opacity: 0.8 }}>
+                  📖 {questTitle}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => setIsLibraryOpen(true)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.2)',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '8px 12px',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '20px',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
+              title="Загрузить квест из библиотеки"
+            >
+              📚
+            </button>
+          </div>
         </div>
 
         {/* Сообщения */}
@@ -256,13 +305,29 @@ export default function AIQuestBuilder({ userId }: Props) {
         ) : (
           <div style={{
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             height: '100%',
-            color: '#9ca3af',
-            fontSize: '18px'
+            gap: '20px'
           }}>
-            Граф квеста появится здесь после того, как AI его сгенерирует
+            <p style={{ color: '#9ca3af', fontSize: '18px', margin: 0 }}>
+              Граф квеста появится здесь
+            </p>
+            <button
+              onClick={() => setIsLibraryOpen(true)}
+              style={{
+                padding: '12px 24px',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
+              📚 Загрузить квест из библиотеки
+            </button>
           </div>
         )}
       </div>
